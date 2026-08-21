@@ -12,16 +12,17 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Extract ZIP File
+      - name: Extract ZIP File & Prepare Project
         run: |
-          ZIP_FILE=$(ls *.zip 2>/dev/null | head -n 1)
+          ZIP_FILE=$(find . -maxdepth 1 -iname "*.zip" | head -n 1)
           if [ -n "$ZIP_FILE" ]; then
             echo "Extracting $ZIP_FILE..."
-            unzip -o "$ZIP_FILE" -d temp_extract
-            if [ -f temp_extract/gradlew ]; then
-              cp -rn temp_extract/* .
-            else
-              cp -rn temp_extract/*/* . 2>/dev/null || true
+            unzip -q -o "$ZIP_FILE" -d temp_extract
+            GRADLEW_PATH=$(find temp_extract -name "gradlew" | head -n 1)
+            if [ -n "$GRADLEW_PATH" ]; then
+              PROJECT_DIR=$(dirname "$GRADLEW_PATH")
+              echo "Found project files in $PROJECT_DIR, moving to root..."
+              cp -r "$PROJECT_DIR"/* .
             fi
             rm -rf temp_extract
           fi
