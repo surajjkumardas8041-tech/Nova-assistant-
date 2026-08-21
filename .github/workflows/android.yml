@@ -12,13 +12,40 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Unzip and Setup Project
+      - name: Auto Find and Prepare Project
         run: |
-          unzip -o *.zip -d extracted
-          GRADLE_DIR=$(dirname $(find extracted -name "gradlew" | head -n 1))
-          cp -r $GRADLE_DIR/* .
-          rm -rf extracted
-          chmod +x gradlew
+          # Check for ZIP file
+          ZIP_FILE=$(find . -maxdepth 2 -iname "*.zip" | head -n 1)
+
+          if [ -n "$ZIP_FILE" ]; then
+            echo "Found ZIP file: $ZIP_FILE. Extracting..."
+            unzip -o "$ZIP_FILE" -d extracted_tmp
+            GRADLE_LOCATION=$(find extracted_tmp -name "gradlew" | head -n 1)
+            if [ -n "$GRADLE_LOCATION" ]; then
+              PROJ_DIR=$(dirname "$GRADLE_LOCATION")
+              cp -rn "$PROJ_DIR"/* .
+            fi
+            rm -rf extracted_tmp
+          fi
+
+          # If gradlew still not in root, locate it anywhere
+          if [ ! -f "gradlew" ]; then
+            GRADLE_LOCATION=$(find . -name "gradlew" | head -n 1)
+            if [ -n "$GRADLE_LOCATION" ]; then
+              PROJ_DIR=$(dirname "$GRADLE_LOCATION")
+              echo "Found gradlew in $PROJ_DIR, moving files..."
+              cp -rn "$PROJ_DIR"/* .
+            fi
+          fi
+
+          # Verify gradlew and grant permission
+          if [ -f "gradlew" ]; then
+            chmod +x gradlew
+            echo "gradlew is ready!"
+          else
+            echo "ERROR: gradlew file not found in repository!"
+            exit 1
+          fi
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
